@@ -25,6 +25,14 @@ public class VMTranslator {
             //set outfile name and initialize code writer
             String outName = FilenameUtils.getBaseName(inFile.toString()) + ".asm";
             Path outFile = Path.of(outName);
+            CodeWriter codeWriter = new CodeWriter(outFile);
+            //Start parsing and writing
+            while (parser.hasMoreLines()){
+                parser.advance();
+                if (parser.commandType().equals("C_ARITHMETIC")){
+
+                }
+            }
 
 
 
