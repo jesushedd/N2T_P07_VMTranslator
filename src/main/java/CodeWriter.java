@@ -25,9 +25,8 @@ public class CodeWriter {
 
     public void writeArithmetic(String arithmeticCommand) throws IOException{
         // TODO write comment
-        outWriter.write(arithmeticCommand);
-        outWriter.flush();
-        notify();close();
+        outWriter.write("// " + arithmeticCommand);
+        outWriter.newLine();
         //
         if (oneValueCommands.contains(arithmeticCommand)){
             //TODO
@@ -47,8 +46,8 @@ public class CodeWriter {
 
     }
 
-    public void close(){
-        return;
+    public void close() throws IOException{
+        outWriter.close();
     }
 
 

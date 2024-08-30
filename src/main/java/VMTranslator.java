@@ -8,6 +8,8 @@ import static org.apache.commons.io.FilenameUtils.*;
 
 public class VMTranslator {
 
+    private static Parser parser;
+
     public static void main(String[] args)  {
         try {
             //get src path and check if exist
@@ -21,7 +23,7 @@ public class VMTranslator {
                 return;
             }
             //initialize parser
-            Parser parser = new Parser(inFile);
+            parser = new Parser(inFile);
             //set outfile name and initialize code writer
             String outName = FilenameUtils.getBaseName(inFile.toString()) + ".asm";
             Path outFile = Path.of(outName);
@@ -30,6 +32,8 @@ public class VMTranslator {
             while (parser.hasMoreLines()){
                 parser.advance();
                 if (parser.commandType().equals("C_ARITHMETIC")){
+                    codeWriter.writeArithmetic(parser.arg1());
+                } else if (parser.commandType().equals()) {
 
                 }
             }
@@ -38,6 +42,13 @@ public class VMTranslator {
 
         } catch (IOException e) {
             System.out.println("Couldn't read the file :(.");
+        } finally {
+            try {
+                parser.close();
+            } catch (IOException e) {
+                System.out.println("Couldn't close the file :(.");
+                e.printStackTrace();
+            }
         }
     }
 }
