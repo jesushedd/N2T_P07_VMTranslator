@@ -33,13 +33,10 @@ public class VMTranslator {
                 parser.advance();
                 if (parser.commandType().equals("C_ARITHMETIC")){
                     codeWriter.writeArithmetic(parser.arg1());
-                } else if (parser.commandType().equals()) {
-
+                } else {
+                    codeWriter.writePushPop(parser.pushOrPop(), parser.arg1(), parser.arg2());
                 }
             }
-
-
-
         } catch (IOException e) {
             System.out.println("Couldn't read the file :(.");
         } finally {
