@@ -46,11 +46,7 @@ public class Parser {
         if (!isValidLine(currentCommand)) {
             advance();
         }
-
-
-
     }
-
 
 
 
@@ -67,6 +63,11 @@ public class Parser {
         return null;
     }
 
+    public String pushOrPop(){
+        String [] parts = currentCommand.split(" ");
+        return parts[0];
+    }
+
 
     /*Returns the first argument of the current command*/
     public String arg1(){
@@ -77,13 +78,11 @@ public class Parser {
     }
 
 
-    /*Returns the second argument of the current command*/
+    /*Returns the second argument of the current command
+    * call it only if current command is push or pop*/
     public int arg2(){
-        if (!commandType().equals("C_ARITHMETIC")){
-            String[] parts = currentCommand.split(" ");
-            return Integer.parseInt(parts[2]);
-        }
-        return -1;
+        String[] parts = currentCommand.split(" ");
+        return Integer.parseInt(parts[2]);
     }
 
 
