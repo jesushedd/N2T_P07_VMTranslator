@@ -9,6 +9,7 @@ import static org.apache.commons.io.FilenameUtils.*;
 public class VMTranslator {
 
     private static Parser parser;
+    private static CodeWriter codeWriter;
 
     public static void main(String[] args)  {
         try {
@@ -27,7 +28,7 @@ public class VMTranslator {
             //set outfile name and initialize code writer
             String outName = FilenameUtils.getBaseName(inFile.toString()) + ".asm";
             Path outFile = Path.of(outName);
-            CodeWriter codeWriter = new CodeWriter(outFile);
+            codeWriter = new CodeWriter(outFile);
             //Start parsing and writing
             while (parser.hasMoreLines()){
                 parser.advance();
@@ -42,6 +43,7 @@ public class VMTranslator {
         } finally {
             try {
                 parser.close();
+                codeWriter.close();
             } catch (IOException e) {
                 System.out.println("Couldn't close the file :(.");
                 e.printStackTrace();

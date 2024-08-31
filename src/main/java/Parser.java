@@ -19,11 +19,7 @@ public class Parser {
         if (line.isBlank()) return false;
         String [] parts =  line.split("//");
         return !parts[0].isBlank();
-
-
     }
-
-
 
 
     /*Constructor
