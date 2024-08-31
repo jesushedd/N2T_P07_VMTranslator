@@ -1,4 +1,5 @@
-import javax.imageio.IIOException;
+import org.apache.commons.io.FilenameUtils;
+
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
@@ -19,7 +20,29 @@ public class CodeWriter {
     /*Relational Commands that operate 2 values*/
     private final Map<String, String> relationalCommands = new HashMap<>();
 
+    /*Mapping access pointer for memory segments : local, argument, temp, this, that*/
     private final Map<String, String> segmentPointers = new HashMap<>();
+
+    private final String className;
+
+
+
+    public CodeWriter(Path outFile) throws IOException {
+        //open file ready to write
+        outWriter = Files.newBufferedWriter(outFile);
+        //save class name
+        className = FilenameUtils.getBaseName(outFile.toString());
+        fillMaps();
+
+    }
+
+
+    /*Constructor for testing*/
+    CodeWriter(Writer writer, String nameOfClass) {
+        outWriter = new BufferedWriter(writer);
+        className = nameOfClass;
+        fillMaps();
+    }
 
     private void fillMaps() {
         //fill arithmetic and logic mapping
@@ -47,23 +70,12 @@ public class CodeWriter {
 
     }
 
-    public CodeWriter(Path outFile) throws IOException {
-        //open file ready to write
-        outWriter = Files.newBufferedWriter(outFile);
-        fillMaps();
-    }
-
-    CodeWriter(Writer writer) {
-        outWriter = new BufferedWriter(writer);
-        fillMaps();
-    }
-
     public void writeArithmetic(String arithmeticCommand) throws IOException {
         // write comment
         outWriter.write("// " + arithmeticCommand);
         outWriter.newLine();
 
-        //TODO write asm instruction
+        //write asm instructions
         String asmInstruction = assembleArithmetic(arithmeticCommand);
         outWriter.write(asmInstruction);
     }
@@ -123,21 +135,71 @@ public class CodeWriter {
 
     public void writePushPop(String pushOrPopCommand, String memorySegment, int index) throws IOException {
         //write comment
-        outWriter.write(pushOrPopCommand + " " + memorySegment + " " + index);
+        outWriter.write("//" + pushOrPopCommand + " " + memorySegment + " " + index + "\r\n");
 
         String asmInstructions;
 
         if (segmentPointers.containsKey(memorySegment)) {
-            asmInstructions = assembleInstructionPointer(pushOrPopCommand, memorySegment, index);
+            asmInstructions = assembleUsingPointer(pushOrPopCommand, memorySegment, index);
         } else if (memorySegment.equals("constant")){
             asmInstructions = assembleConstant(index);
-        }
+        } else if (memorySegment.equals("static")) {
+            asmInstructions = assembleStatic(pushOrPopCommand, index);
 
-
-
+        } else if (memorySegment.equals("pointer")){
+            asmInstructions = assemblePointer(pushOrPopCommand, index);
+        } else throw new IllegalArgumentException();
 
 
     }
+
+    private String assemblePointer(String pushOrPopCommand, int index) {
+        String asmInstructions ;
+        if (!(index == 0 | index == 1)) throw  new IllegalArgumentException();
+
+        String thisOrThat = index == 0 ? "@THIS\r\n" : "@THAT\r\n";
+        if (pushOrPopCommand.equals("pop")){
+            asmInstructions =   "@SP\r\n" +
+                                "AM=M-1\r\n" +
+                                "D=M\r\n" +
+                                thisOrThat +
+                                "M=D";
+        } else if (pushOrPopCommand.equals("push")) {
+            asmInstructions =   thisOrThat +
+                                "D=M" +
+
+                                "@SP\r\n" +
+                                "A=M\r\n" +
+                                "M=D\r\n" +
+
+                                "@SP\r\n" +
+                                "M=M+1\r\n";
+        } else throw new IllegalArgumentException();
+        return  asmInstructions;
+    }
+
+    private String assembleStatic(String pushOrPop, int index) {
+        String asmInstruction;
+        if (pushOrPop.equals("pop")){
+            asmInstruction =    "@SP\r\n" +
+                                "AM=M-1\r\n" +
+                                "D=M\r\n" +
+                                //save on @className.i
+                                "@" + className + "." + index + "\r\n" +
+                                "M=D\r\n";
+        } else if (pushOrPop.equals("push")) {
+            asmInstruction =    "@" + className + "." + index + "\r\n" + //get vale from static i
+                                "D=M\r\n" +
+                                "@SP\r\n" +
+                                "A=M\r\n" +
+                                "M=D\r\n" +
+                                "@SP\r\n" +
+                                "M=M+1\r\n";
+        } else throw new IllegalArgumentException();
+        return asmInstruction;
+    }
+
+
 
     private String assembleConstant(int index) {
         return                      "@" + index + "\r\n" +
@@ -149,7 +211,7 @@ public class CodeWriter {
                                     "M=M+1\r\n";
     }
 
-    private String assembleInstructionPointer(String popPush, String memorySegment, int index) {
+    private String assembleUsingPointer(String popPush, String memorySegment, int index) {
         String asmInstructions;
         String deReference = memorySegment.equals("temp") ? "A" : "M";
 
@@ -160,9 +222,11 @@ public class CodeWriter {
                                 "D=" + deReference + "+D\r\n" +
                                 "@addr\r\n" +
                                 "M=D\r\n" +
+
                                 "@SP\r\n" +
                                 "AM=M-1\r\n" +
                                 "D=M\r\n" +
+
                                 "@addr\r\n" +
                                 "A=M\r\n" +
                                 "M=D\r\n";
