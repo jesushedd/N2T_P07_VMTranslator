@@ -24,12 +24,16 @@ public class CodeWriter {
     /*Mapping access pointer for memory segments : local, argument, temp, this, that*/
     private final Map<String, String> segmentPointers = new HashMap<>();
 
+    /*Mapping for asn Snippets*/
+    private final Map<String, String> asmSnippets = new HashMap<>();
+
     private final String className;
 
     private int relationalCounter;
 
 
 
+    /*Constructor*/
     public CodeWriter(Path outFile) throws IOException {
         //open file ready to write
         outWriter = Files.newBufferedWriter(outFile);
@@ -68,10 +72,18 @@ public class CodeWriter {
         //fill memory segments mapping
         segmentPointers.put("argument", "@ARG");
         segmentPointers.put("local", "@LCL");
-        //segmentPointers.put("static", "??");
         segmentPointers.put("this", "@THIS");
         segmentPointers.put("that", "@THAT");
         segmentPointers.put("temp", "@5");
+
+        //fill asm Snippets
+        asmSnippets.put("D=pop()",  "@SP\r\n" + //select stack pointer
+                                    "AM=M-1\r\n" + //dereference it and subtract 1, select top stack value ,update stack pointer by -1
+                                    "D=M\r\n" ); //save top stack value
+
+        asmSnippets.put("(SP-1)*",  "@SP\r\n" + // select new stack pointer (top value)
+                                    "A=M-1\n" );// dereference it and subtract 1, finally select this new memory block
+
 
     }
 
@@ -96,10 +108,7 @@ public class CodeWriter {
                     "M=" + oneValueCommands.get(arithmeticCommand) + "M\r\n";  // update top value with new value commanded
         } else if (arithmeticLogicCommands.containsKey(arithmeticCommand)) { //for commands that require the 2 most top values on Stack
 
-            asmInstructions = //get top value (y)
-                    "@SP\r\n" +  //select stack pointer
-                            "AM=M-1\r\n" + //dereference it and subtract 1, select top stack value ,update stack pointer by -1
-                            "D=M\r\n" + //save top stack value
+            asmInstructions = asmSnippets.get("D=pop()") +
 
                             "@SP\r\n" + // select new stack pointer (top value)
                             "A=M-1\r\n" + // dereference it and subtract 1,  this is the second to top value from stack (x), select it
@@ -108,9 +117,7 @@ public class CodeWriter {
                             "M=M" + arithmeticLogicCommands.get(arithmeticCommand) + "D\r\n"; // save result of operation
         } else if (relationalCommands.containsKey(arithmeticCommand)) {
             asmInstructions = //get top value (y)
-                            "@SP\r\n" +  //select stack pointer
-                            "AM=M-1\r\n" + //dereference it and subtract 1, select top stack value ,update stack pointer by -1
-                            "D=M\r\n" + //save top stack value
+                            asmSnippets.get("D=pop()") +
                             //get x
                             "@SP\r\n" +
                             "A=M-1\r\n" +
@@ -168,9 +175,7 @@ public class CodeWriter {
 
         String thisOrThat = index == 0 ? "@THIS\r\n" : "@THAT\r\n";
         if (pushOrPopCommand.equals("pop")){
-            asmInstructions =   "@SP\r\n" +
-                                "AM=M-1\r\n" +
-                                "D=M\r\n" +
+            asmInstructions =   asmSnippets.get("D=pop()") +
                                 thisOrThat +
                                 "M=D\r\n";
         } else if (pushOrPopCommand.equals("push")) {
@@ -190,9 +195,7 @@ public class CodeWriter {
     private String assembleStatic(String pushOrPop, int index) {
         String asmInstruction;
         if (pushOrPop.equals("pop")){
-            asmInstruction =    "@SP\r\n" +
-                                "AM=M-1\r\n" +
-                                "D=M\r\n" +
+            asmInstruction =    asmSnippets.get("D=pop()") +
                                 //save on @className.i
                                 "@" + className + "." + index + "\r\n" +
                                 "M=D\r\n";
@@ -232,9 +235,7 @@ public class CodeWriter {
                                 "@addr\r\n" +
                                 "M=D\r\n" +
 
-                                "@SP\r\n" +
-                                "AM=M-1\r\n" +
-                                "D=M\r\n" +
+                                asmSnippets.get("D=pop()") +
 
                                 "@addr\r\n" +
                                 "A=M\r\n" +
