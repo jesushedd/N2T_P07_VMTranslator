@@ -2,7 +2,6 @@ import org.apache.commons.io.FilenameUtils;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.PipedReader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,14 +11,14 @@ public class CodeWriter {
 
     private final BufferedWriter outWriter;
 
-    /*AArithmetic and Logic Commands that operate 2 values*/
-    private final Map<String, String> arithmeticLogicCommands = new HashMap<>();
+    /*AArithmetic and Logic Commands that operate 2 values to asm*/
+    private final Map<String, String> asmTwoOperators = new HashMap<>();
 
-    /*AArithmetic and Logic Commands that operate 1 value*/
-    private final Map<String, String> oneValueCommands = new HashMap<>();
+    /*AArithmetic and Logic Commands that operate 1 value to asm*/
+    private final Map<String, String> asmOneOperators = new HashMap<>();
 
-    /*Relational Commands that operate 2 values*/
-    private final Map<String, String> relationalCommands = new HashMap<>();
+    /*Relational Commands that operate 2 values to asm*/
+    private final Map<String, String> asmRelational = new HashMap<>();
 
     /*Mapping access pointer for memory segments : local, argument, temp, this, that*/
     private final Map<String, String> segmentPointers = new HashMap<>();
@@ -55,19 +54,19 @@ public class CodeWriter {
 
     private void fillMaps() {
         //fill arithmetic and logic mapping
-        arithmeticLogicCommands.put("add", "+");
-        arithmeticLogicCommands.put("sub", "-");
-        arithmeticLogicCommands.put("and", "&");
-        arithmeticLogicCommands.put("or", "|");
+        asmTwoOperators.put("add", "+");
+        asmTwoOperators.put("sub", "-");
+        asmTwoOperators.put("and", "&");
+        asmTwoOperators.put("or", "|");
 
         //fill relational mapping
-        relationalCommands.put("eq", "JEQ");
-        relationalCommands.put("gt", "JGT");
-        relationalCommands.put("lt", "JLT");
+        asmRelational.put("eq", "JEQ");
+        asmRelational.put("gt", "JGT");
+        asmRelational.put("lt", "JLT");
 
         //fil one value mapping
-        oneValueCommands.put("neg", "-");
-        oneValueCommands.put("not", "!");
+        asmOneOperators.put("neg", "-");
+        asmOneOperators.put("not", "!");
 
         //fill memory segments mapping
         segmentPointers.put("argument", "@ARG");
@@ -81,10 +80,15 @@ public class CodeWriter {
                                     "AM=M-1\r\n" + //dereference it and subtract 1, select top stack value ,update stack pointer by -1
                                     "D=M\r\n" ); //save top stack value
 
-        asmSnippets.put("(SP-1)*",  "@SP\r\n" + // select new stack pointer (top value)
-                                    "A=M-1\n" );// dereference it and subtract 1, finally select this new memory block
+        asmSnippets.put("@(SP-1)",  "@SP\r\n" + // select new stack pointer (top value)
+                                    "A=M-1\r\n" );// dereference it and subtract 1, finally select this new memory block
 
+        asmSnippets.put("SP* = D",  "@SP\r\n" + //select stack pointer
+                                    "A=M\r\n" + //dereference it
+                                    "M=D\r\n" ); // save D register value on it
 
+        asmSnippets.put("SP++",     "@SP\r\n" +
+                                    "M=M+1\r\n");
     }
 
     public void writeArithmetic(String arithmeticCommand) throws IOException {
@@ -99,44 +103,38 @@ public class CodeWriter {
 
     /*
     Translate an arithmetic command to Hack assembler instructions  St*/
-    private String assembleArithmetic(String arithmeticCommand) {
+    private String assembleArithmetic(String commandLogArith) {
 
         String asmInstructions;
-        if (oneValueCommands.containsKey(arithmeticCommand)) { //for commands that require only the most top value on Stack
-            asmInstructions = "@SP\r\n" + //select stack pointer
-                    "A=M-1\r\n" + // dereference it and subtract 1 , select top stack top value
-                    "M=" + oneValueCommands.get(arithmeticCommand) + "M\r\n";  // update top value with new value commanded
-        } else if (arithmeticLogicCommands.containsKey(arithmeticCommand)) { //for commands that require the 2 most top values on Stack
+        if (asmOneOperators.containsKey(commandLogArith)) { //for commands that require only the most top value on Stack
+            asmInstructions =   asmSnippets.get("@(SP-1)") +
+                                "M=" + asmOneOperators.get(commandLogArith) + "M\r\n";  // update top value with new value commanded
+        } else if (asmTwoOperators.containsKey(commandLogArith)) { //for commands that require the 2 most top values on Stack
 
-            asmInstructions = asmSnippets.get("D=pop()") +
-
-                            "@SP\r\n" + // select new stack pointer (top value)
-                            "A=M-1\r\n" + // dereference it and subtract 1,  this is the second to top value from stack (x), select it
+            asmInstructions =   asmSnippets.get("D=pop()") +
+                                asmSnippets.get("@(SP-1)") +
 
                             // execute operation and save it
-                            "M=M" + arithmeticLogicCommands.get(arithmeticCommand) + "D\r\n"; // save result of operation
-        } else if (relationalCommands.containsKey(arithmeticCommand)) {
+                            "M=M" + asmTwoOperators.get(commandLogArith) + "D\r\n"; // save result of operation
+        } else if (asmRelational.containsKey(commandLogArith)) {
             asmInstructions = //get top value (y)
                             asmSnippets.get("D=pop()") +
                             //get x
-                            "@SP\r\n" +
-                            "A=M-1\r\n" +
+                            asmSnippets.get("@(SP-1)") +
                             //save comparison
                             "D=M-D\r\n" +
                             // if condition given is true; jump to save true
                             "@SAVE_TRUE" + relationalCounter +"\r\n" +
-                            "D;" + relationalCommands.get(arithmeticCommand) + "\r\n" +
+                            "D;" + asmRelational.get(commandLogArith) + "\r\n" +
                             //if not save false on new stack top value
-                            "@SP\r\n" +
-                            "A=M-1\r\n" +
+                                    asmSnippets.get("@(SP-1)") +
                             "M=0\r\n" +
 
                             "@CONTINUE"+ relationalCounter +"\r\n" +
                             "0;JMP\r\n" +
 
                             "(SAVE_TRUE" +  relationalCounter +")\r\n" +
-                            "@SP\r\n" +
-                            "A=M-1\r\n" +
+                            asmSnippets.get("@(SP-1)")+
                             "M=-1\r\n" +
 
                             "(CONTINUE" + relationalCounter + ")\r\n";
@@ -182,12 +180,9 @@ public class CodeWriter {
             asmInstructions =   thisOrThat +
                                 "D=M\r\n" +
 
-                                "@SP\r\n" +
-                                "A=M\r\n" +
-                                "M=D\r\n" +
+                                asmSnippets.get("SP*=D") +
 
-                                "@SP\r\n" +
-                                "M=M+1\r\n";
+                                asmSnippets.get("SP++");
         } else throw new IllegalArgumentException();
         return  asmInstructions;
     }
@@ -202,11 +197,10 @@ public class CodeWriter {
         } else if (pushOrPop.equals("push")) {
             asmInstruction =    "@" + className + "." + index + "\r\n" + //get vale from static i
                                 "D=M\r\n" +
-                                "@SP\r\n" +
-                                "A=M\r\n" +
-                                "M=D\r\n" +
-                                "@SP\r\n" +
-                                "M=M+1\r\n";
+
+                                asmSnippets.get("SP*=D") +
+
+                                asmSnippets.get("SP++");
         } else throw new IllegalArgumentException();
         return asmInstruction;
     }
@@ -216,11 +210,10 @@ public class CodeWriter {
     private String assembleConstant(int index) {
         return                      "@" + index + "\r\n" +
                                     "D=A\r\n" +
-                                    "@SP\r\n" +
-                                    "A=M\r\n" +
-                                    "M=D\r\n" +
-                                    "@SP\r\n" +
-                                    "M=M+1\r\n";
+
+                                    asmSnippets.get("SP*=D") +
+
+                                    asmSnippets.get("SP++");
     }
 
     private String assembleUsingPointer(String popPush, String memorySegment, int index) {
@@ -247,12 +240,9 @@ public class CodeWriter {
                                 "A="+ deReference + "+D\r\n" +
                                 "D=M\r\n" +
 
-                                "@SP\r\n" +
-                                "A=M\r\n" +
-                                "M=D\r\n" +
+                                asmSnippets.get("SP*=D") +
 
-                                "@SP\r\n" +
-                                "M=M+1\r\n";
+                                asmSnippets.get("SP++");
         } else throw new IllegalArgumentException();
         return  asmInstructions;
     }
