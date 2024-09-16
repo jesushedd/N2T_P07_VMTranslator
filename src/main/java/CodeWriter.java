@@ -83,7 +83,7 @@ public class CodeWriter {
         asmSnippets.put("@(SP-1)",  "@SP\r\n" + // select new stack pointer (top value)
                                     "A=M-1\r\n" );// dereference it and subtract 1, finally select this new memory block
 
-        asmSnippets.put("SP* = D",  "@SP\r\n" + //select stack pointer
+        asmSnippets.put("SP*=D",    "@SP\r\n" + //select stack pointer
                                     "A=M\r\n" + //dereference it
                                     "M=D\r\n" ); // save D register value on it
 
@@ -91,6 +91,7 @@ public class CodeWriter {
                                     "M=M+1\r\n");
     }
 
+    /*Writes to file the hack asm the stack based representation of an arithmetic command, */
     public void writeArithmetic(String arithmeticCommand) throws IOException {
         // write comment
         outWriter.write("// " + arithmeticCommand);
@@ -101,43 +102,41 @@ public class CodeWriter {
         outWriter.write(asmInstruction);
     }
 
-    /*
-    Translate an arithmetic command to Hack assembler instructions  St*/
     private String assembleArithmetic(String commandLogArith) {
 
         String asmInstructions;
         if (asmOneOperators.containsKey(commandLogArith)) { //for commands that require only the most top value on Stack
-            asmInstructions =   asmSnippets.get("@(SP-1)") +
-                                "M=" + asmOneOperators.get(commandLogArith) + "M\r\n";  // update top value with new value commanded
+            asmInstructions =       asmSnippets.get("@(SP-1)") +
+                                    "M=" + asmOneOperators.get(commandLogArith) + "M\r\n";  // update top value with new value commanded
         } else if (asmTwoOperators.containsKey(commandLogArith)) { //for commands that require the 2 most top values on Stack
 
-            asmInstructions =   asmSnippets.get("D=pop()") +
-                                asmSnippets.get("@(SP-1)") +
+            asmInstructions =       asmSnippets.get("D=pop()") +
+                                    asmSnippets.get("@(SP-1)") +
 
                             // execute operation and save it
-                            "M=M" + asmTwoOperators.get(commandLogArith) + "D\r\n"; // save result of operation
+                                    "M=M" + asmTwoOperators.get(commandLogArith) + "D\r\n"; // save result of operation
         } else if (asmRelational.containsKey(commandLogArith)) {
             asmInstructions = //get top value (y)
-                            asmSnippets.get("D=pop()") +
+                                    asmSnippets.get("D=pop()") +
                             //get x
-                            asmSnippets.get("@(SP-1)") +
+                                    asmSnippets.get("@(SP-1)") +
                             //save comparison
-                            "D=M-D\r\n" +
+                                    "D=M-D\r\n" +
                             // if condition given is true; jump to save true
-                            "@SAVE_TRUE" + relationalCounter +"\r\n" +
-                            "D;" + asmRelational.get(commandLogArith) + "\r\n" +
+                                    "@SAVE_TRUE" + relationalCounter +"\r\n" +
+                                    "D;" + asmRelational.get(commandLogArith) + "\r\n" +
                             //if not save false on new stack top value
                                     asmSnippets.get("@(SP-1)") +
-                            "M=0\r\n" +
+                                    "M=0\r\n" +
 
-                            "@CONTINUE"+ relationalCounter +"\r\n" +
-                            "0;JMP\r\n" +
+                                    "@CONTINUE"+ relationalCounter +"\r\n" +
+                                    "0;JMP\r\n" +
 
-                            "(SAVE_TRUE" +  relationalCounter +")\r\n" +
-                            asmSnippets.get("@(SP-1)")+
-                            "M=-1\r\n" +
+                                    "(SAVE_TRUE" +  relationalCounter +")\r\n" +
+                                    asmSnippets.get("@(SP-1)")+
+                                    "M=-1\r\n" +
 
-                            "(CONTINUE" + relationalCounter + ")\r\n";
+                                    "(CONTINUE" + relationalCounter + ")\r\n";
             relationalCounter++;
         } else throw new IllegalArgumentException();
         return asmInstructions;
@@ -177,12 +176,12 @@ public class CodeWriter {
                                 thisOrThat +
                                 "M=D\r\n";
         } else if (pushOrPopCommand.equals("push")) {
-            asmInstructions =   thisOrThat +
-                                "D=M\r\n" +
-
-                                asmSnippets.get("SP*=D") +
-
-                                asmSnippets.get("SP++");
+            asmInstructions =           //get pointer from that or this, save it on D register
+                                        thisOrThat +
+                                        "D=M\r\n" +
+                                        //push pointer
+                                        asmSnippets.get("SP*=D") +
+                                        asmSnippets.get("SP++");
         } else throw new IllegalArgumentException();
         return  asmInstructions;
     }
@@ -195,11 +194,11 @@ public class CodeWriter {
                                 "@" + className + "." + index + "\r\n" +
                                 "M=D\r\n";
         } else if (pushOrPop.equals("push")) {
-            asmInstruction =    "@" + className + "." + index + "\r\n" + //get vale from static i
+            asmInstruction =    //get vale from static i, save it on D register
+                                "@" + className + "." + index + "\r\n" +
                                 "D=M\r\n" +
-
+                                //push on stack
                                 asmSnippets.get("SP*=D") +
-
                                 asmSnippets.get("SP++");
         } else throw new IllegalArgumentException();
         return asmInstruction;
@@ -208,11 +207,11 @@ public class CodeWriter {
 
 
     private String assembleConstant(int index) {
-        return                      "@" + index + "\r\n" +
+        return                      //@i
+                                    "@" + index + "\r\n" +
                                     "D=A\r\n" +
-
+                                    //push
                                     asmSnippets.get("SP*=D") +
-
                                     asmSnippets.get("SP++");
     }
 
@@ -247,10 +246,34 @@ public class CodeWriter {
         return  asmInstructions;
     }
 
+    public void writeLabel(String label) throws IOException {
+
+        outWriter.write("//label" + " " + label + "\r\n");//write opt comment
+        outWriter.write("("+ label +")\r\n");
+        
+    }
+    
+
 
     public void close() throws IOException{
         outWriter.close();
     }
 
 
+    public void writeIf(String label) throws IOException {
+
+        outWriter.write("//if-goto" + " " + label + "\r\n");
+        String asmCondGoTo =    asmSnippets.get("D=pop()") +
+                                "@" + label + "\r\n" +
+                                "D;JGT\r\n";
+        outWriter.write(asmCondGoTo);
+    }
+
+    public void writeGoto(String label) throws IOException {
+
+        outWriter.write("//goto" + " " + label + "\r\n");
+        String asmGoTo =    "@" + label + "\r\n" +
+                            "0;JMP\r\n";
+        outWriter.write(asmGoTo);
+    }
 }
