@@ -102,6 +102,13 @@ public class CodeWriter {
         outWriter.write(asmInstruction);
     }
 
+    /*
+     * Takes and String that represent a VM logic, arithmetic or comparison commands, and translate  it to Hack assembler instructions.
+     * Three types of arithmetic commands taken in account
+     * 1. If the arithmetic command uses only 1 value. Ej: negate, negative.
+     * 2. If the arithmetic command uses 2 values: Ej: addition, subtraction.
+     * 3. If the  command is a comparison between 2 values. Ej: >, ==
+     */
     private String assembleArithmetic(String commandLogArith) {
 
         String asmInstructions;
@@ -143,21 +150,36 @@ public class CodeWriter {
 
     }
 
-    public void writePushPop(String pushOrPopCommand, String memorySegment, int index) throws IOException {
+    /*
+    * Writes to file the hack asm stack based representation of a push or pop command.
+    * Takes a literal String: "push" or "pop"; a String that indicates the memory segment to work on; and an int : index of that memory segment.
+    * Four cases:
+    * 1.  If working segment is one of: LCL, THIS, THAT, ARG.
+    * 2. If ws is static
+    * 3. if ws is constant
+    * 4. If ws is pointer
+    * Each case calls a helper method that builds the String of asm Hack instructions.*/
+    public void writePushPop(String pushOrPop, String workingSegment, int index) throws IOException {
+
+        //check proper command
+        if (!(pushOrPop.equals("pop") | pushOrPop.equals("push"))){
+            throw new IllegalArgumentException();
+        }
+
         //write comment
-        outWriter.write("//" + pushOrPopCommand + " " + memorySegment + " " + index + "\r\n");
+        outWriter.write("//" + pushOrPop + " " + workingSegment + " " + index + "\r\n");
 
         String asmInstructions;
 
-        if (segmentPointers.containsKey(memorySegment)) {
-            asmInstructions = assembleUsingPointer(pushOrPopCommand, memorySegment, index);
-        } else if (memorySegment.equals("constant")){
+        if (segmentPointers.containsKey(workingSegment)) {
+            asmInstructions = assembleNonStatic(pushOrPop, workingSegment, index);
+        } else if (workingSegment.equals("constant")){
             asmInstructions = assembleConstant(index);
-        } else if (memorySegment.equals("static")) {
-            asmInstructions = assembleStatic(pushOrPopCommand, index);
+        } else if (workingSegment.equals("static")) {
+            asmInstructions = assembleStatic(pushOrPop, index);
 
-        } else if (memorySegment.equals("pointer")){
-            asmInstructions = assemblePointer(pushOrPopCommand, index);
+        } else if (workingSegment.equals("pointer")){
+            asmInstructions = assemblePointer(pushOrPop, index);
         } else throw new IllegalArgumentException();
 
         //write asm instructions
@@ -215,7 +237,7 @@ public class CodeWriter {
                                     asmSnippets.get("SP++");
     }
 
-    private String assembleUsingPointer(String popPush, String memorySegment, int index) {
+    private String assembleNonStatic(String popPush, String memorySegment, int index) {
         String asmInstructions;
         String deReference = memorySegment.equals("temp") ? "A" : "M";
 
