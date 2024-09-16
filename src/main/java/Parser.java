@@ -11,6 +11,7 @@ public class Parser {
     private static BufferedReader sourceFile;
     private String currentCommand = "" ;
     private String nextCommand;
+    private String commandType;
 
     /*Return true if a string is a valid line
     * A valid lines is no blank, and not a comment line*/
@@ -39,25 +40,44 @@ public class Parser {
     public void advance() throws IOException{
         currentCommand = nextCommand;
         nextCommand = sourceFile.readLine();
-        if (!isValidLine(currentCommand)) {
-            advance();
-        }
+        if (isValidLine(currentCommand)){
+            sanitizeCurrentCommand();
+            setCommandType();
+        }else advance();
+    }
+
+    private void sanitizeCurrentCommand(){
+        String[] parts  = currentCommand.split("//");
+        currentCommand = parts[0];
+        currentCommand = currentCommand.strip();
     }
 
 
 
     /*Returns a constant representing the type of the current command*/
-    public String commandType(){
+    private void  setCommandType(){
         Set<String> arithmeticCommands = new HashSet<>(List.of("add", "sub", "neg", "eq", "gt",
                 "lt", "and", "or", "not"));
 
-        if (currentCommand.contains("push")) return "C_PUSH";
-        if (currentCommand.contains("pop")) return "C_POP";
         for (String ar : arithmeticCommands){
-            if (currentCommand.contains(ar)) return "C_ARITHMETIC";
+            if (currentCommand.contains(ar)) {
+                commandType = "C_ARITHMETIC";
+                return;
+            }
         }
-        return null;
+
+        if (currentCommand.contains("push")) commandType = "C_PUSH";
+        else if (currentCommand.contains("pop")) commandType = "C_POP";
+        else if (currentCommand.contains("label")) commandType = "LABEL";
+        else if (currentCommand.contains("if-goto")) commandType = "IF-GOTO";
+        else if (currentCommand.contains("goto")) commandType = "GOTO";
     }
+
+    public String commandType() {
+        return commandType;
+    }
+
+
 
     public String pushOrPop(){
         String [] parts = currentCommand.split(" ");
@@ -87,8 +107,13 @@ public class Parser {
     }
 
 
-
-
-
+    public String getLabel() throws Exception {
+        if (commandType().equals("LABEL") | commandType().equals("GOTO") | commandType().equals("IF-GOTO")){
+            String[] parts = currentCommand.split(" ");
+            return parts[1];
+        } else throw new Exception("No label type command");
     }
+
+
+}
 
