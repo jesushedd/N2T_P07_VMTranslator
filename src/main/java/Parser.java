@@ -59,18 +59,23 @@ public class Parser {
         Set<String> arithmeticCommands = new HashSet<>(List.of("add", "sub", "neg", "eq", "gt",
                 "lt", "and", "or", "not"));
 
+        String[] commandsParts = currentCommand.split(" ");
+        String keyWord = commandsParts[0];
+
         for (String ar : arithmeticCommands){
-            if (currentCommand.contains(ar)) {
+            if (keyWord.contains(ar)) {
                 commandType = "C_ARITHMETIC";
                 return;
             }
         }
 
         if (currentCommand.contains("push")) commandType = "C_PUSH";
-        else if (currentCommand.contains("pop")) commandType = "C_POP";
-        else if (currentCommand.contains("label")) commandType = "LABEL";
-        else if (currentCommand.contains("if-goto")) commandType = "IF-GOTO";
-        else if (currentCommand.contains("goto")) commandType = "GOTO";
+        else if (keyWord.contains("pop")) commandType = "C_POP";
+        else if (keyWord.contains("label") | currentCommand.contains("function")) commandType = "LABEL";
+        else if (keyWord.contains("if-goto")) commandType = "IF-GOTO";
+        else if (keyWord.contains("goto")) commandType = "GOTO";
+        else if (keyWord.contains("call")) commandType = "CALLING";
+        else if (keyWord.contains("return")) commandType = "RETURN";
     }
 
     public String commandType() {
@@ -102,16 +107,17 @@ public class Parser {
     }
 
 
-    public void close() throws IOException {
-        sourceFile.close();
-    }
-
 
     public String getLabel() throws Exception {
         if (commandType().equals("LABEL") | commandType().equals("GOTO") | commandType().equals("IF-GOTO")){
             String[] parts = currentCommand.split(" ");
             return parts[1];
         } else throw new Exception("No label type command");
+    }
+
+
+    public void close() throws IOException {
+        sourceFile.close();
     }
 
 
