@@ -9,7 +9,7 @@ import java.util.*;
 
 public class CodeWriter {
 
-    private final BufferedWriter outWriter;
+    private final BufferedWriter outFile;
 
     /*AArithmetic and Logic Commands that operate 2 values to asm*/
     private final Map<String, String> asmTwoOperators = new HashMap<>();
@@ -28,16 +28,16 @@ public class CodeWriter {
 
     private final String className;
 
-    private int relationalCounter;
+    private long relationalCounter;
 
 
 
     /*Constructor*/
-    public CodeWriter(Path outFile) throws IOException {
+    public CodeWriter(Path out) throws IOException {
         //open file ready to write
-        outWriter = Files.newBufferedWriter(outFile);
+        this.outFile = Files.newBufferedWriter(out);
         //save class name
-        className = FilenameUtils.getBaseName(outFile.toString());
+        className = FilenameUtils.getBaseName(out.toString());
         relationalCounter = 0;
         fillMaps();
 
@@ -46,7 +46,7 @@ public class CodeWriter {
 
     /*Constructor for testing*/
     CodeWriter(Writer writer, String nameOfClass) {
-        outWriter = new BufferedWriter(writer);
+        outFile = new BufferedWriter(writer);
         className = nameOfClass;
         relationalCounter = 0;
         fillMaps();
@@ -94,12 +94,12 @@ public class CodeWriter {
     /*Writes to file the hack asm the stack based representation of an arithmetic command, */
     public void writeArithmetic(String arithmeticCommand) throws IOException {
         // write comment
-        outWriter.write("// " + arithmeticCommand);
-        outWriter.newLine();
+        outFile.write("// " + arithmeticCommand);
+        outFile.newLine();
 
         //write asm instructions
         String asmInstruction = assembleArithmetic(arithmeticCommand);
-        outWriter.write(asmInstruction);
+        outFile.write(asmInstruction);
     }
 
     /*
@@ -130,24 +130,23 @@ public class CodeWriter {
                             //save comparison
                                     "D=M-D\r\n" +
                             // if condition given is true; jump to save true
-                                    "@SAVE_TRUE" + relationalCounter +"\r\n" +
+                                    "@SAVE_TRUE" + className + "." + relationalCounter +"\r\n" +
                                     "D;" + asmRelational.get(commandLogArith) + "\r\n" +
                             //if not save false on new stack top value
                                     asmSnippets.get("@(SP-1)") +
                                     "M=0\r\n" +
 
-                                    "@CONTINUE"+ relationalCounter +"\r\n" +
+                                    "@CONTINUE"+ className + "." + relationalCounter +"\r\n" +
                                     "0;JMP\r\n" +
 
-                                    "(SAVE_TRUE" +  relationalCounter +")\r\n" +
+                                    "(SAVE_TRUE" +  className + "." + relationalCounter +")\r\n" +
                                     asmSnippets.get("@(SP-1)")+
                                     "M=-1\r\n" +
 
-                                    "(CONTINUE" + relationalCounter + ")\r\n";
+                                    "(CONTINUE" + className + "." + relationalCounter + ")\r\n";
             relationalCounter++;
         } else throw new IllegalArgumentException();
         return asmInstructions;
-
     }
 
     /*
@@ -167,7 +166,7 @@ public class CodeWriter {
         }
 
         //write comment
-        outWriter.write("//" + pushOrPop + " " + workingSegment + " " + index + "\r\n");
+        outFile.write("//" + pushOrPop + " " + workingSegment + " " + index + "\r\n");
 
         String asmInstructions;
 
@@ -182,8 +181,8 @@ public class CodeWriter {
             asmInstructions = assemblePointer(pushOrPop, index);
         } else throw new IllegalArgumentException();
 
-        //write asm instructions
-        outWriter.write(asmInstructions);
+
+        outFile.write(asmInstructions);
 
 
     }
@@ -270,32 +269,122 @@ public class CodeWriter {
 
     public void writeLabel(String label) throws IOException {
 
-        outWriter.write("//label" + " " + label + "\r\n");//write opt comment
-        outWriter.write("("+ label +")\r\n");
+        outFile.write("//label" + " " + className + "." + label  + "\r\n");//write opt comment
+        outFile.write("("+ className + "." + label +")\r\n");
         
     }
     
 
 
-    public void close() throws IOException{
-        outWriter.close();
-    }
+
 
 
     public void writeIf(String label) throws IOException {
 
-        outWriter.write("//if-goto" + " " + label + "\r\n");
+        outFile.write("//if-goto" + " " + className + "." + label + "\r\n");
         String asmCondGoTo =    asmSnippets.get("D=pop()") +
-                                "@" + label + "\r\n" +
+                                "@" + className + "." + label + "\r\n" +
                                 "D;JGT\r\n";
-        outWriter.write(asmCondGoTo);
+        outFile.write(asmCondGoTo);
     }
 
     public void writeGoto(String label) throws IOException {
 
-        outWriter.write("//goto" + " " + label + "\r\n");
-        String asmGoTo =    "@" + label + "\r\n" +
+        outFile.write("//goto" + " " + className + "." + label + "\r\n");
+        String asmGoTo =    "@" + className + "." + label + "\r\n" +
                             "0;JMP\r\n";
-        outWriter.write(asmGoTo);
+        outFile.write(asmGoTo);
+    }
+
+    public void writeFunction(String functionName, int nVars) throws IOException {
+
+        //write comment
+        outFile.write("//"   + functionName + nVars + "\r\n");
+        //write function name label
+        outFile.write("("  + functionName +")\r\n");
+        /*update LCL pointer tp SP
+            String setLCL =  "@SP\r\n" +
+                            "D=M\r\n" +
+                            "@LCL\r\n" +
+                            "M=D\r\n";*/
+        //make nVars push 0
+        for (int i = 0; i < nVars; i++) {
+            writePushPop("push", "constant", 0);
+        }
+
+        //return top value to arg 0
+
+    }
+
+
+    public void writeReturn() throws IOException {
+        outFile.write("// Return\r\n");
+        //temp frame
+        String asm =    "@LCL\r\n" +
+                        "D=M\r\n" +
+                        "@frame\r\n" +
+                        "M=D\r\n";
+        //retAddress = *(frame-5)
+        asm = asm +     "@5\r\n" +
+                        "D=A\r\n" +
+                        "@frame\r\n" +
+                        "A=M-D\r\n" +
+                        "D=M\r\n" +
+                        "@retAddr\r\n" +
+                        "M=D\r\n";
+        //*ARG = pop()
+        asm = asm +     asmSnippets.get("D=pop()") +
+                        "@ARG\r\n" +
+                        "A=M\r\n" +
+                        "M=D\r\n";
+        //SP ARG + 1
+        asm = asm +     "@ARG\r\n" +
+                        "D=M\r\n" +
+                        "@SP\r\n" +
+                        "M=D+1\r\n";
+        // THAT = *(frame-1)
+        asm = asm +     "@frame\r\n" +
+                        "A=M-1\r\n" +
+                        "D=M\r\n" +
+                        "@THAT\r\n" +
+                        "M=D\r\n";
+        //THIS = *(frame-2)
+        asm = asm +     "@2\r\n" +
+                        "D=A\r\n" +
+                        "@frame\r\n" +
+                        "A=M-D\r\n" +
+                        "D=M\r\n" +
+                        "@THIS\r\n" +
+                        "M=D\r\n";
+        //ARG = *(frame-3)
+        asm = asm +     "@3\r\n" +
+                        "D=A\r\n" +
+                        "@frame\r\n" +
+                        "A=M-D\r\n" +
+                        "D=M\r\n" +
+                        "@ARG\r\n" +
+                        "M=D\r\n";
+        //LCL = *(frame-4)
+        asm = asm +     "@4\r\n" +
+                        "D=A\r\n" +
+                        "@frame\r\n" +
+                        "A=M-D\r\n" +
+                        "D=M\r\n" +
+                        "@LCL\r\n" +
+                        "M=D\r\n";
+        //go to retAddr
+        asm = asm +     "@retAddr\r\n" +
+                        "A=M\r\n" +
+                        "0;JMP\r\n";
+
+
+        outFile.write(asm);
+    }
+
+
+
+
+    public void close() throws IOException{
+        outFile.close();
     }
 }
