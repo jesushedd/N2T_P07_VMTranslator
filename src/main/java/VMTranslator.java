@@ -31,16 +31,23 @@ public class VMTranslator {
 
                 parser.advance();
 
-                if (parser.commandType().equals("C_ARITHMETIC")){
+                String currentCommandType = parser.commandType();
+
+                if (currentCommandType.equals("C_ARITHMETIC")){
                     codeWriter.writeArithmetic(parser.arg1());
-                } else if (parser.commandType().equals("C_PUSH") | parser.commandType().equals("C_POP")){
+                } else if (currentCommandType.equals("C_PUSH") | currentCommandType.equals("C_POP")){
                     codeWriter.writePushPop(parser.pushOrPop(), parser.arg1(), parser.arg2());
-                } else if (parser.commandType().equals("LABEL")) {
+                } else if (currentCommandType.equals("LABEL")) {
                     codeWriter.writeLabel(parser.getLabel());
-                } else if (parser.commandType().equals("IF-GOTO")) {
+                } else if (currentCommandType.equals("IF-GOTO")) {
                     codeWriter.writeIf(parser.getLabel());
-                } else if (parser.commandType().equals("GOTO")) {
+                } else if (currentCommandType.equals("GOTO")) {
                     codeWriter.writeGoto(parser.getLabel());
+                } else if (currentCommandType.equals("FUNCTION")){
+                    codeWriter.writeFunction(parser.getLabel(), parser.nVars());
+                } else if (currentCommandType.equals("RETURN")) {
+                    codeWriter.writeReturn();
+
                 }
             }
         } catch (IOException e) {
