@@ -71,7 +71,8 @@ public class Parser {
 
         if (currentCommand.contains("push")) commandType = "C_PUSH";
         else if (keyWord.contains("pop")) commandType = "C_POP";
-        else if (keyWord.contains("label") | currentCommand.contains("function")) commandType = "LABEL";
+        else if (keyWord.contains("label")) commandType = "LABEL";
+        else if (keyWord.contains("function")) commandType = "FUNCTION";
         else if (keyWord.contains("if-goto")) commandType = "IF-GOTO";
         else if (keyWord.contains("goto")) commandType = "GOTO";
         else if (keyWord.contains("call")) commandType = "CALLING";
@@ -109,10 +110,18 @@ public class Parser {
 
 
     public String getLabel() throws Exception {
-        if (commandType().equals("LABEL") | commandType().equals("GOTO") | commandType().equals("IF-GOTO")){
+        if (commandType.equals("LABEL") | commandType.equals("GOTO") | commandType.equals("IF-GOTO") | commandType.equals("FUNCTION")){
             String[] parts = currentCommand.split(" ");
             return parts[1];
         } else throw new Exception("No label type command");
+    }
+
+    public int nVars() {
+        if (!commandType.equals("FUNCTION")){
+            throw new RuntimeException("Not a function declaration command :|");
+        }
+        String[] commandParts = currentCommand.split(" ");
+        return Integer.parseInt(commandParts[2]);
     }
 
 
