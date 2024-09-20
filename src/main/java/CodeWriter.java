@@ -2,7 +2,6 @@ import org.apache.commons.io.FilenameUtils;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.PipedReader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -146,7 +145,7 @@ public class CodeWriter {
         String asmInstructions;
 
         if (segmentPointers.containsKey(memorySegment)) {
-            asmInstructions = assembleUsingPointer(pushOrPopCommand, memorySegment, index);
+            asmInstructions = assembleUsingPointerSegment(pushOrPopCommand, memorySegment, index);
         } else if (memorySegment.equals("constant")){
             asmInstructions = assembleConstant(index);
         } else if (memorySegment.equals("static")) {
@@ -220,7 +219,7 @@ public class CodeWriter {
                                     "M=M+1\r\n";
     }
 
-    private String assembleUsingPointer(String popPush, String memorySegment, int index) {
+    private String assembleUsingPointerSegment(String popPush, String memorySegment, int index) {
         String asmInstructions;
         String deReference = memorySegment.equals("temp") ? "A" : "M";
 

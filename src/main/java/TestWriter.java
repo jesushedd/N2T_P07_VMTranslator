@@ -11,7 +11,7 @@ public class TestWriter {
     public void testWriteArithmetic() throws IOException {
         StringWriter out = new StringWriter();
         // neg not
-        codeWriter = new CodeWriter(out);
+        codeWriter = new CodeWriter(out, "test");
         codeWriter.writeArithmetic("neg");
         codeWriter.writeArithmetic("not");
         codeWriter.close();
@@ -27,7 +27,7 @@ public class TestWriter {
 
         // + , - , & , |
         out = new StringWriter();
-        codeWriter = new CodeWriter(out);
+        codeWriter = new CodeWriter(out, "test");
         codeWriter.writeArithmetic("add");
         codeWriter.writeArithmetic("sub");
         codeWriter.writeArithmetic("and");

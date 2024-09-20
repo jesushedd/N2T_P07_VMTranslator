@@ -12,17 +12,17 @@ public class VMTranslator {
     private static CodeWriter codeWriter;
 
     public static void main(String[] args)  {
+        //get src path and check if exist
+        Path inFile = Path.of(args[0]);
+        if (!Files.exists(inFile)) {
+            System.out.println("The input file doesn't exist :(.");
+            return;
+        }
+        if (!isExtension(inFile.toString(),"vm")){
+            System.out.println("Invalid file extension.");
+            return;
+        }
         try {
-            //get src path and check if exist
-            Path inFile = Path.of(args[0]);
-            if (!Files.exists(inFile)) {
-                System.out.println("The input file doesn't exist :(.");
-                return;
-            }
-            if (!isExtension(inFile.toString(),"vm")){
-                System.out.println("Invalid file extension.");
-                return;
-            }
             //initialize parser
             parser = new Parser(inFile);
             //set outfile name and initialize code writer
