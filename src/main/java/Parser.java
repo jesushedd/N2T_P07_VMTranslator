@@ -109,11 +109,11 @@ public class Parser {
 
 
 
-    public String getLabel() throws Exception {
+    public String getLabel() throws RuntimeException {
         if (commandType.equals("LABEL") | commandType.equals("GOTO") | commandType.equals("IF-GOTO") | commandType.equals("FUNCTION")){
             String[] parts = currentCommand.split(" ");
             return parts[1];
-        } else throw new Exception("No label type command");
+        } else throw new RuntimeException("No label type command");
     }
 
     public int nVars() {
