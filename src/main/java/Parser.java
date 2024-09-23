@@ -37,9 +37,14 @@ public class Parser {
 
 
     /*Reads the next command from the input and makes it the current command*/
-    public void advance() throws IOException{
+    public void advance() {
         currentCommand = nextCommand;
-        nextCommand = sourceFile.readLine();
+        try {
+            nextCommand = sourceFile.readLine();
+        } catch (IOException e) {
+            System.out.println("couldn't continue parsing :(");
+            throw new RuntimeException(e);
+        }
         if (isValidLine(currentCommand)){
             sanitizeCurrentCommand();
             setCommandType();
@@ -77,6 +82,7 @@ public class Parser {
         else if (keyWord.contains("goto")) commandType = "GOTO";
         else if (keyWord.contains("call")) commandType = "CALLING";
         else if (keyWord.contains("return")) commandType = "RETURN";
+        else throw new RuntimeException("Unknown command identifier");
     }
 
     public String commandType() {
@@ -109,11 +115,11 @@ public class Parser {
 
 
 
-    public String getLabel() throws Exception {
+    public String getLabel() {
         if (commandType.equals("LABEL") | commandType.equals("GOTO") | commandType.equals("IF-GOTO") | commandType.equals("FUNCTION")){
             String[] parts = currentCommand.split(" ");
             return parts[1];
-        } else throw new Exception("No label type command");
+        } else throw new RuntimeException("no label type command");
     }
 
     public int nVars() {
