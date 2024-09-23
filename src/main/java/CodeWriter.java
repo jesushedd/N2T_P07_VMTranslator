@@ -26,7 +26,7 @@ public class CodeWriter {
     /*Mapping for asn Snippets*/
     private final Map<String, String> asmSnippets = new HashMap<>();
 
-    private final String className;
+    private String className;
 
     private long relationalCounter;
 
@@ -36,8 +36,6 @@ public class CodeWriter {
     public CodeWriter(Path out) throws IOException {
         //open file ready to write
         this.outFile = Files.newBufferedWriter(out);
-        //save class name
-        className = FilenameUtils.getBaseName(out.toString());
         relationalCounter = 0;
         fillMaps();
 
@@ -299,7 +297,7 @@ public class CodeWriter {
     public void writeFunction(String functionName, int nVars) throws IOException {
 
         //write comment
-        outFile.write("//"   + functionName + nVars + "\r\n");
+        outFile.write("// Function" + " "  + functionName +" " + nVars + "\r\n");
         //write function name label
         outFile.write("("  + functionName +")\r\n");
         /*update LCL pointer tp SP
@@ -386,5 +384,9 @@ public class CodeWriter {
 
     public void close() throws IOException{
         outFile.close();
+    }
+
+    public void setFileName(String baseName) {
+        className = baseName;
     }
 }
