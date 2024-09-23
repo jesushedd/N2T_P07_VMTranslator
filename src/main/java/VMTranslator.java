@@ -1,6 +1,13 @@
+import org.apache.commons.io.FilenameUtils;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.stream.Stream;
+
 import static org.apache.commons.io.FilenameUtils.*;
 
 public class VMTranslator {
@@ -8,59 +15,111 @@ public class VMTranslator {
     private static Parser parser;
     private static CodeWriter codeWriter;
 
-    public static void main(String[] args)  {
+    private static void translateFullDirectory(Path directoryPath) throws IOException {
+        //get all .vm files as Path inside  a List
+        Stream<Path> paths;
         try {
-            //get src path and check if exist
-            Path inFile = Path.of(args[0]);
-            if (!Files.exists(inFile)) {
-                System.out.println("The input file doesn't exist :(.");
-                return;
+            paths = Files.walk(directoryPath, 1);
+        } catch (IOException e) {
+            throw new RuntimeException("A file failed :(");
+        }
+
+        final  List<Path> vmFiles = new ArrayList<>();
+
+        Iterator<Path> iter = paths.iterator();
+        iter.next(); //for base path
+        while (iter.hasNext()){
+            Path filePath = iter.next();
+            if (FilenameUtils.isExtension(filePath.toString(), "vm")){
+                vmFiles.add(filePath);
             }
-            if (!isExtension(inFile.toString(),"vm")){
-                System.out.println("Invalid file extension.");
-                return;
+        }
+        //set outfile name and initialize code writer
+        String outName = FilenameUtils.getBaseName( directoryPath.toString() ) + ".asm";
+        Path outFile = Path.of(outName);
+        codeWriter = new CodeWriter(outFile);
+        //for each start translating
+        for (Path vmClassFile : vmFiles){
+            translateSingleFile(vmClassFile);
+        }
+
+    }
+
+    private static void translateSingleFile(Path filePath) throws IOException {
+        if (!isExtension(filePath.toString(), "vm")) {
+            System.out.println("Invalid file extension.");
+            throw new RuntimeException();
+        } else {
+            try {
+                //initialize parser
+                parser = new Parser(filePath);
+            } catch (IOException e) {
+                System.out.println("Couldn't read the file named: " + filePath);
+                throw new RuntimeException();
             }
-            //initialize parser
-            parser = new Parser(inFile);
-            //set outfile name and initialize code writer
-            String outName = getBaseName(inFile.toString()) + ".asm";
+        }
+        //set outfile name and initialize code writer
+        if (codeWriter == null) {
+            String outName = getBaseName(filePath.toString()) + ".asm";
             Path outFile = Path.of(outName);
             codeWriter = new CodeWriter(outFile);
-            //Start parsing and writing
-            while (parser.hasMoreLines()){
+        }
 
-                parser.advance();
+        //set class Name
+        codeWriter.setFileName(FilenameUtils.getBaseName(filePath.toString()));
+        //Start parsing and writing
+        while (parser.hasMoreLines()) {
 
-                String currentCommandType = parser.commandType();
+            parser.advance();
 
-                if (currentCommandType.equals("C_ARITHMETIC")){
-                    codeWriter.writeArithmetic(parser.arg1());
-                } else if (currentCommandType.equals("C_PUSH") | currentCommandType.equals("C_POP")){
-                    codeWriter.writePushPop(parser.pushOrPop(), parser.arg1(), parser.arg2());
-                } else if (currentCommandType.equals("LABEL")) {
-                    codeWriter.writeLabel(parser.getLabel());
-                } else if (currentCommandType.equals("IF-GOTO")) {
-                    codeWriter.writeIf(parser.getLabel());
-                } else if (currentCommandType.equals("GOTO")) {
-                    codeWriter.writeGoto(parser.getLabel());
-                } else if (currentCommandType.equals("FUNCTION")){
-                    codeWriter.writeFunction(parser.getLabel(), parser.nVars());
-                } else if (currentCommandType.equals("RETURN")) {
-                    codeWriter.writeReturn();
+            String currentCommandType = parser.commandType();
 
-                }
+            if (currentCommandType.equals("C_ARITHMETIC")) {
+                codeWriter.writeArithmetic(parser.arg1());
+            } else if (currentCommandType.equals("C_PUSH") | currentCommandType.equals("C_POP")) {
+                codeWriter.writePushPop(parser.pushOrPop(), parser.arg1(), parser.arg2());
+            } else if (currentCommandType.equals("LABEL")) {
+                codeWriter.writeLabel(parser.getLabel());
+            } else if (currentCommandType.equals("IF-GOTO")) {
+                codeWriter.writeIf(parser.getLabel());
+            } else if (currentCommandType.equals("GOTO")) {
+                codeWriter.writeGoto(parser.getLabel());
+            } else if (currentCommandType.equals("FUNCTION")) {
+                codeWriter.writeFunction(parser.getLabel(), parser.nVars());
+            } else if (currentCommandType.equals("RETURN")) {
+                codeWriter.writeReturn();
+
             }
+        }
+        parser.close();
+    }
+
+
+    public static void main(String[] args) {
+        //get src path and check if exist
+        Path inFile = Path.of(args[0]).toAbsolutePath();
+        if (!Files.exists(inFile)) {
+            System.out.println("The input file doesn't exist :(.");
+            return;
+        }
+
+
+        //check if given path argument is a file or folder
+        try {
+            if (Files.isDirectory(inFile)) {
+                translateFullDirectory(inFile);
+            } else if (Files.exists(inFile)) {
+                translateSingleFile(inFile);
+            }
+
         } catch (IOException e) {
-            System.out.println("Couldn't read the file :(.");
-        } catch (Exception e) {
             e.printStackTrace();
+            throw new RuntimeException(e);
         } finally {
             try {
-                parser.close();
                 codeWriter.close();
             } catch (IOException e) {
-                System.out.println("Couldn't close the file :(.");
-                e.printStackTrace();
+                System.out.println("Couldn't close the output file.");
             }
         }
     }
