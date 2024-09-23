@@ -12,16 +12,20 @@ import static org.apache.commons.io.FilenameUtils.*;
 
 public class VMTranslator {
 
-    private static Parser parser;
     private static CodeWriter codeWriter;
 
     private static void translateFullDirectory(Path directoryPath) throws IOException {
         //get all .vm files as Path inside  a List
-        Stream<Path> paths;
+        Stream<Path> paths = null;
         try {
             paths = Files.walk(directoryPath, 1);
         } catch (IOException e) {
-            throw new RuntimeException("A file failed :(");
+            System.out.println("Failed to identify files in directory :(");
+            throw e;
+        } finally {
+            if (paths != null){
+                paths.close();
+            }
         }
 
         final  List<Path> vmFiles = new ArrayList<>();
@@ -30,12 +34,12 @@ public class VMTranslator {
         iter.next(); //for base path
         while (iter.hasNext()){
             Path filePath = iter.next();
-            if (FilenameUtils.isExtension(filePath.toString(), "vm")){
+            if (isExtension(filePath.toString(), "vm")){
                 vmFiles.add(filePath);
             }
         }
         //set outfile name and initialize code writer
-        String outName = FilenameUtils.getBaseName( directoryPath.toString() ) + ".asm";
+        String outName = getBaseName( directoryPath.toString() ) + ".asm";
         Path outFile = Path.of(outName);
         codeWriter = new CodeWriter(outFile);
         //for each start translating
@@ -46,6 +50,7 @@ public class VMTranslator {
     }
 
     private static void translateSingleFile(Path filePath) throws IOException {
+        Parser parser;
         if (!isExtension(filePath.toString(), "vm")) {
             System.out.println("Invalid file extension.");
             throw new RuntimeException();
@@ -55,7 +60,7 @@ public class VMTranslator {
                 parser = new Parser(filePath);
             } catch (IOException e) {
                 System.out.println("Couldn't read the file named: " + filePath);
-                throw new RuntimeException();
+                throw e;
             }
         }
         //set outfile name and initialize code writer
@@ -66,7 +71,7 @@ public class VMTranslator {
         }
 
         //set class Name
-        codeWriter.setFileName(FilenameUtils.getBaseName(filePath.toString()));
+        codeWriter.setFileName(getBaseName(filePath.toString()));
         //Start parsing and writing
         while (parser.hasMoreLines()) {
 
@@ -114,12 +119,12 @@ public class VMTranslator {
 
         } catch (IOException e) {
             e.printStackTrace();
-            throw new RuntimeException(e);
         } finally {
             try {
                 codeWriter.close();
             } catch (IOException e) {
                 System.out.println("Couldn't close the output file.");
+                e.printStackTrace();
             }
         }
     }
