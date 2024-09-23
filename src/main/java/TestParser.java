@@ -7,7 +7,7 @@ import java.nio.file.Path;
 public class TestParser {
 
     static Parser parser;
-    static Path inFile = Path.of("I:\\OSSU\\sistemas\\nan_tetris\\projects\\7\\VMTranslator\\out\\production\\VMTranslator\\BasicTest.vm");
+    static Path inFile = Path.of("I:\\OSSU\\sistemas\\nan_tetris\\projects\\7\\VMTranslator\\BasicTest.vm");
 
 
     //testAdvance including all lines even blanks and comments lines
