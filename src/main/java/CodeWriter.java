@@ -30,6 +30,8 @@ public class CodeWriter {
 
     private long relationalCounter;
 
+    private long funCallsCounter;
+
 
 
     /*Constructor*/
@@ -37,7 +39,11 @@ public class CodeWriter {
         //open file ready to write
         this.outFile = Files.newBufferedWriter(out);
         relationalCounter = 0;
+        funCallsCounter = 0;
         fillMaps();
+
+        //boostrap code
+        writeBoosTrap();
 
     }
 
@@ -47,6 +53,7 @@ public class CodeWriter {
         outFile = new BufferedWriter(writer);
         className = nameOfClass;
         relationalCounter = 0;
+        funCallsCounter = 0;
         fillMaps();
     }
 
@@ -87,6 +94,16 @@ public class CodeWriter {
 
         asmSnippets.put("SP++",     "@SP\r\n" +
                                     "M=M+1\r\n");
+    }
+
+
+    private void writeBoosTrap() throws IOException {
+        String asm =    "@256\r\n" +
+                        "D=A\r\n" +
+                        "@SP\r\n" +
+                        "M=D\r\n";
+        outFile.write(asm);
+        writeCall("Sys.init", 0);
     }
 
     /*Writes to file the hack asm the stack based representation of an arithmetic command, */
@@ -299,13 +316,13 @@ public class CodeWriter {
         //write comment
         outFile.write("// Function" + " "  + functionName +" " + nVars + "\r\n");
         //write function name label
-        outFile.write("("  + functionName +")\r\n");
+        outFile.write("("  + functionName.toUpperCase() +")\r\n");
         /*update LCL pointer tp SP
             String setLCL =  "@SP\r\n" +
                             "D=M\r\n" +
                             "@LCL\r\n" +
                             "M=D\r\n";*/
-        //make nVars push 0
+        //Initialize local variables to 0, do nVars times push 0
         for (int i = 0; i < nVars; i++) {
             writePushPop("push", "constant", 0);
         }
@@ -388,5 +405,70 @@ public class CodeWriter {
 
     public void setFileName(String baseName) {
         className = baseName;
+    }
+
+    public void writeCall(String functionName, int nArgs) throws IOException {
+        //write comment
+        outFile.write("//" + "call" +" "+ functionName + " " + nArgs );
+        outFile.newLine();
+        //build asm instructions
+        String asm = "";
+        //push returnAddress
+        asm +=  "@" + functionName.toUpperCase() + "." +  "RETURN_ADD" + "." + funCallsCounter + "\r\n" +
+                "D=A\r\n" +
+                asmSnippets.get("SP*=D") +
+                asmSnippets.get("SP++");
+
+        //push/saves LCL ptr
+        asm +=  "@LCL\r\n" +
+                "D=M\r\n" +
+                asmSnippets.get("SP*=D") +
+                asmSnippets.get("SP++");
+
+        //push/saves ARG ptr
+        asm +=  "@ARG\r\n" +
+                "D=M\r\n" +
+                asmSnippets.get("SP*=D") +
+                asmSnippets.get("SP++");
+
+        //push/saves THIS ptr
+        asm +=  "@THIS\r\n" +
+                "D=M\r\n" +
+                asmSnippets.get("SP*=D") +
+                asmSnippets.get("SP++");
+
+        //push/saves THAT ptr
+        asm +=  "@THAT\r\n" +
+                "D=M\r\n" +
+                asmSnippets.get("SP*=D") +
+                asmSnippets.get("SP++");
+
+        //reposition ARG ptr to SP - 5 -nArgs
+        asm +=  "@5\r\n" +
+                "D=A\r\n" +
+                "@" + nArgs + "\r\n" +
+                "D=D+A\r\n" +
+                "@SP\r\n" +
+                "D=M-D\r\n" +
+                "@ARG\r\n" +
+                "M=D\r\n";
+        //LCL = SP repositions local of the callee
+        asm +=  "@SP\r\n" +
+                "D=M\r\n" +
+                "@LCL\r\n" +
+                "M=D\r\n";
+        //goto to callee function
+        asm += "@" + functionName.toUpperCase() + "\r\n" +
+                "0;JMP\r\n";
+
+        //create return address label into asm code
+        asm += "(" + functionName.toUpperCase() + "." +  "RETURN_ADD" + "." + funCallsCounter + ")\r\n";
+
+
+        outFile.write(asm);
+
+        funCallsCounter++;
+
+
     }
 }
