@@ -22,10 +22,6 @@ public class VMTranslator {
         } catch (IOException e) {
             System.out.println("Failed to identify files in directory :(");
             throw e;
-        } finally {
-            if (paths != null){
-                paths.close();
-            }
         }
 
         final  List<Path> vmFiles = new ArrayList<>();
@@ -46,6 +42,7 @@ public class VMTranslator {
         for (Path vmClassFile : vmFiles){
             translateSingleFile(vmClassFile);
         }
+        paths.close();
 
     }
 
@@ -93,7 +90,8 @@ public class VMTranslator {
                 codeWriter.writeFunction(parser.getLabel(), parser.nVars());
             } else if (currentCommandType.equals("RETURN")) {
                 codeWriter.writeReturn();
-
+            } else if (currentCommandType.equals("CALLING")){
+                codeWriter.writeCall(parser.getFunName(), parser.nArgs());
             }
         }
         parser.close();
