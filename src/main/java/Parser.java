@@ -100,15 +100,18 @@ public class Parser {
     /*Returns the first argument of the current command*/
     public String arg1(){
         if (commandType().equals("C_ARITHMETIC")) return currentCommand;
-        //when is pop or push
+        //when is pop or push, returns  target memory  segment
         String [] parts = currentCommand.split(" ");
         return parts[1];
     }
 
 
-    /*Returns the second argument of the current command
+    /*Returns the second argument (index of memory segment) of the current command
     * call it only if current command is push or pop*/
     public int arg2(){
+        if (!(commandType.equals("C_PUSH") | commandType.equals("C_POP"))){
+            throw new RuntimeException("Arg 2 only exist for pop/push commands");
+        }
         String[] parts = currentCommand.split(" ");
         return Integer.parseInt(parts[2]);
     }
@@ -116,11 +119,18 @@ public class Parser {
 
 
     public String getLabel() {
-        if (commandType.equals("LABEL") | commandType.equals("GOTO") | commandType.equals("IF-GOTO") | commandType.equals("FUNCTION")){
+        if (commandType.equals("LABEL") | commandType.equals("GOTO") | commandType.equals("IF-GOTO") | commandType.equals("FUNCTION") | commandType.equals("CALLING")){
             String[] parts = currentCommand.split(" ");
             return parts[1];
         } else throw new RuntimeException("no label type command");
     }
+
+    public String getFunName(){
+        if (commandType.equals("CALLING") | commandType.equals("FUNCTION")){
+            return getLabel();
+        } else throw new RuntimeException("no function type command");
+    }
+
 
     public int nVars() {
         if (!commandType.equals("FUNCTION")){
@@ -130,10 +140,21 @@ public class Parser {
         return Integer.parseInt(commandParts[2]);
     }
 
+    public int nArgs() {
+        if (!commandType.equals("CALLING")){
+            throw new RuntimeException("Not a Calling  command :|");
+        }
+        String[] commandParts = currentCommand.split(" ");
+        return Integer.parseInt(commandParts[2]);
+    }
+
+
+
 
     public void close() throws IOException {
         sourceFile.close();
     }
+
 
 
 }
